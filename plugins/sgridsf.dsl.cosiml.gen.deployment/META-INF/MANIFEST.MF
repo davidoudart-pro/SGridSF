@@ -1,0 +1,35 @@
+Manifest-Version: 1.0
+Bundle-ManifestVersion: 2
+Bundle-Name: Acceleo DeploymentFiles Module Runtime Plug-in
+Bundle-SymbolicName: sgridsf.dsl.cosiml.gen.deployment
+Bundle-Version: 1.0.0.qualifier
+Bundle-Activator: sgridsf.dsl.cosiml.gen.deployment.Activator
+Bundle-Vendor: Eclipse Modeling Project
+Require-Bundle: org.eclipse.core.runtime,
+ org.eclipse.emf.ecore,
+ org.eclipse.emf.ecore,
+ org.eclipse.emf.ecore.xmi,
+ org.eclipse.ocl,
+ org.eclipse.ocl.ecore,
+ org.eclipse.acceleo.common;bundle-version="3.3.0",
+ org.eclipse.acceleo.model;bundle-version="3.3.0",
+ org.eclipse.acceleo.profiler;bundle-version="3.3.0",
+ org.eclipse.acceleo.engine;bundle-version="3.3.0",
+ com.google.guava,
+ org.junit
+Bundle-RequiredExecutionEnvironment: JavaSE-1.8
+Bundle-ActivationPolicy: lazy
+Eclipse-LazyStart: true
+Export-Package: sgridsf.dsl.cosiml.gen.deployment.common;x-internal:=true,
+ sgridsf.dsl.cosiml.gen.deployment.files;x-internal:=true,
+ sgridsf.dsl.cosiml.gen.deployment.main;
+  uses:="org.eclipse.emf.ecore,
+   org.eclipse.emf.common.util,
+   org.eclipse.acceleo.engine.service,
+   org.eclipse.emf.ecore.resource,
+   org.eclipse.acceleo.engine.generation.strategy",
+ sgridsf.dsl.cosiml.gen.deployment.properties,
+ sgridsf.dsl.cosiml.gen.deployment.services
+Bundle-ClassPath: bin/
+Import-Package: cosiml
+

@@ -1,0 +1,55 @@
+[comment encoding = UTF-8 /]
+[**
+ * The documentation of the module generateDng.
+ */]
+[module genDngFile('http://www.example.org/cosiml')]
+
+[import sgridsf::dsl::cosiml::gen::deployment::common::util /]
+[import sgridsf::dsl::cosiml::gen::deployment::common::javafmi /]
+[import sgridsf::dsl::cosiml::gen::deployment::services::pathsservice /]
+
+[**
+ * The documentation of the template generateCosimulationModel.
+ * @param aCosimulationModel
+ */]
+
+
+
+
+
+
+[template public genDngFile(cosim : CosimulationModel)]
+[file(cosim.getDngPath(), false, 'UTF-8')]
+
+[for(unit : SimulationUnit | cosim.units )]
+[comment]FMU [unit.name/] "[unit.getFmuPath().relativizeTo(cosim.getDngPath().getParentPath())/]"[/comment]
+FMU [unit.getVName()/] "[unit.getTargetFolder() +'/'+ unit.getFmuPath()/]"
+	[for(port : Port | unit.getInputPorts())]
+	Input [unit.getVName()/] [port.name/] [port.getVariableType()/]
+	[if (port.nature = Variability::DISCRETE)]
+	Input [unit.getVName()/] [port.getSyncName()/] Integer
+	[/if]
+	[/for]
+	[for(port : Port | unit.getOutputPorts())]
+	Output [unit.getVName()/] [port.name/] [port.getVariableType()/]
+	[if (port.nature = Variability::DISCRETE)]
+	Output [unit.getVName()/] [port.getSyncName()/] Integer
+	[/if] 
+	[/for]
+[/for]
+
+
+[for (link : Link | cosim.links)]
+Connection [link.output.getQualifiedName()/] [link.input.getQualifiedName()/]
+[if (link.output.nature = Variability::DISCRETE and link.input.nature = Variability::DISCRETE)]
+Connection [link.output.getSyncQualifiedName()/] [link.input.getSyncQualifiedName()/]
+[/if]
+[/for]
+Log [for (output : Output | cosim.units.getOutputPorts())][output.getQualifiedName()/] [if (output.nature = Variability::DISCRETE)][output.getSyncQualifiedName()/] [/if][/for]
+Export , .
+CoInit 100 1.0E-5
+ConstantStepper [cosim.stepSize/]
+Simulation [cosim.startTime/] [cosim.stopTime/]
+
+[/file]
+[/template]

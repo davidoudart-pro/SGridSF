@@ -1,0 +1,181 @@
+[comment encoding = UTF-8 /]
+[**
+ * The documentation of the module.
+ * 
+ * V 0.9 : Ne gère que les causalités Input / Output.
+ */]
+[module genJavaFmiFile('http://www.example.org/cosiml')/]
+
+[import sgridsf::dsl::cosiml::gen::deployment::common::util /]
+[import sgridsf::dsl::cosiml::gen::deployment::common::javafmi /]
+[import sgridsf::dsl::cosiml::gen::deployment::services::pathsservice /]
+
+
+[**### GeneratedSimulationUnit ### /]
+
+[template private simmodelInterface(unit : GeneratedSimulationUnit) post(trim())]
+//Utilisé dans un premier temps, pour comprendre ce qu'on fait
+public interface ISimulationModel {
+	//To transmit inputs to model
+[for (port : Port | unit.getInputPorts())]
+	[if (port.nature = Variability::DISCRETE)]
+	//Event input
+	public void [port.getInEventFunc()/](double time, [port.getJavaType()/] value);
+	[else]
+	//Continuous input
+	public void [port.getInContFunc()/](double time, [port.getJavaType()/] value);
+	[/if]
+
+[/for]
+
+	//To fetch output from model
+[for (port : Port | unit.getOutputPorts())]
+	[if (port.nature = Variability::DISCRETE)]
+	//Event output
+	public Boolean [port.getOutCheckEventFunc()/]();
+	public [port.getJavaType()/] [port.getOutGetEventFunc()/]();
+	[else]
+	//Continuous output
+	public [port.getJavaType()/] [port.getOutContFunc()/]();
+	[/if]
+
+[/for]  
+
+	//To fetch output from model - New Interface
+[for (port : Port | unit.getOutputPorts())]
+	[if (port.nature = Variability::DISCRETE)]
+	//Event output
+	public boolean [port.getOutGetEventFunc()/](final [port.getJavaType().toUpperFirst()/] [port.getVName()/]_temp[ '[' /][ ']' /]);
+	[else]
+	//Continuous output
+	public [port.getJavaType()/] [port.getOutContFunc()/]();
+	[/if]
+
+[/for]  
+
+	public void activate(double t, double dt);
+}
+[/template]
+
+
+
+[**
+ * The documentation of the template.
+ * @param aGeneratedSimulationUnit
+ */]
+[template public genJavaFmiWrapperFile(unit : GeneratedSimulationUnit) post(trim()) 
+{
+	path : String = unit.getUnitPath()+'/src/siani/javafmi/'; 
+}]
+	[file (path.concat(unit.getVName()).concat('.java'), false, 'UTF-8')]
+/*
+[unit.simmodelInterface()/]
+*/
+
+
+package siani.javafmi;
+
+import org.javafmi.framework.FmiSimulation;
+
+
+[unit.importText/];
+
+
+
+public class [unit.getVName()/] extends FmiSimulation {
+
+	//FMI variables
+	[unit.declarePorts()/]
+
+	[unit.usageText/] simmodel;
+	//Elapsed time since the begining of the simulation. 
+	//Must be reverted in case of rollback 
+	double _timeElapsed = 0;
+    
+
+
+	@Override
+	public Model define() {
+		[unit.defineModel()/]
+		
+		model.description("[unit.descriptions.toString()/]");
+		model.canGetAndSetFMUstate(false);
+		model.canSerializeFMUstate(false);
+		model.providesDirectionalDerivative(true);
+		model.canBeInstantiatedOnlyOncePerProcess(true);
+		model.canHandleVariableCommunicationStepSize(true); 
+		return model;
+	}
+
+	@Override
+	public Status init() {
+		[unit.registerPorts()/]
+		
+		simmodel = new [unit.usageText/]();
+
+		return Status.OK;
+	}
+
+	@Override
+	public Status doStep(double dt) {
+		Status code = Status.OK;
+
+		//handle inputs
+	[for (port : Input | unit.getInputPorts())]
+		[if (port.nature = Variability::CONTINUOUS)]
+		simmodel.[port.getInContFunc()/](_timeElapsed, [port.getVName()/]);
+		[elseif (port.nature = Variability::DISCRETE)]
+		if ([port.getVName()/]_sync > [port.getVName()/]_sync_pre ) {
+			simmodel.[port.getInEventFunc()/](_timeElapsed, [port.getVName()/]);
+			code = ([port.getVName()/]_sync > [port.getVName()/]_sync_pre + 1) ? Status.WARNING : code;
+			[port.getVName()/]_sync_pre = [port.getVName()/]_sync;
+		}
+		[/if]
+	[/for]
+	
+	simmodel.activate(_timeElapsed, dt);
+
+		//handle outputs
+	[for (port : Output | unit.getOutputPorts())]
+		[if (port.nature = Variability::DISCRETE)]
+		/*if (simmodel.[port.getOutCheckEventFunc()/]()) {
+			[port.getVName()/] = simmodel.[port.getOutGetEventFunc()/]();
+			[port.getVName()/]_sync += 1;
+		}*/
+		[port.getJavaType().toUpperFirst()/] [port.getVName()/]_temp[ '[' /][ ']' /] = {null};
+		if (simmodel.[port.getOutGetEventFunc()/]([port.getVName()/]_temp)) {
+			if ([port.getVName()/]_temp[ '[' /]0[ ']' /] != null) {
+				[port.getVName()/] = [port.getVName()/]_temp[ '[' /]0[ ']' /];
+				[port.getVName()/]_sync += 1;
+			}
+		}
+		[elseif (port.nature = Variability::CONTINUOUS)]
+		//Continuous output
+		[port.getVName()/] = simmodel.[port.getOutContFunc()/]();
+		[/if]
+	[/for]
+	
+	
+		
+		this._timeElapsed += dt;
+		return code;
+	}
+	
+
+	@Override
+	public Status reset() {
+		// TODO Auto-generated method stub
+		return Status.OK;
+	}
+
+	@Override
+	public Status terminate() {
+		// TODO Auto-generated method stub
+		return Status.OK;
+	}
+
+}
+
+
+	[/file]
+[/template]

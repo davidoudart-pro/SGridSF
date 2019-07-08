@@ -1,0 +1,38 @@
+[comment encoding = UTF-8 /]
+[module pathsservice('http://www.example.org/cosiml')/]
+
+[query public getTargetFolder(anOclAny: OclAny) : String
+	= invoke('sgridsf.dsl.cosiml.gen.deployment.services.PathsService', 'getTargetFolder()', Sequence{})
+/]
+
+[query public getSourceFile(anOclAny: OclAny) : String
+	= invoke('sgridsf.dsl.cosiml.gen.deployment.services.PathsService', 'getSourceFile()', Sequence{})
+/]
+
+[query public isFile(arg0 : String) : Boolean
+	= invoke('sgridsf.dsl.cosiml.gen.deployment.services.PathsService', 'isFile(java.lang.String)', Sequence{arg0})
+/]
+
+[query public isDirectory(arg0 : String) : Boolean
+	= invoke('sgridsf.dsl.cosiml.gen.deployment.services.PathsService', 'isDirectory(java.lang.String)', Sequence{arg0})
+/]
+
+[query public exists(arg0 : String) : Boolean
+	= invoke('sgridsf.dsl.cosiml.gen.deployment.services.PathsService', 'exists(java.lang.String)', Sequence{arg0})
+/]
+
+[query public isAbsolute(arg0 : String) : Boolean
+	= invoke('sgridsf.dsl.cosiml.gen.deployment.services.PathsService', 'isAbsolute(java.lang.String)', Sequence{arg0})
+/]
+
+[query public getParentPath(arg0 : String) : String
+	= invoke('sgridsf.dsl.cosiml.gen.deployment.services.PathsService', 'getParentPath(java.lang.String)', Sequence{arg0})
+/]
+
+[query public getFileName(arg0 : String) : String
+	= invoke('sgridsf.dsl.cosiml.gen.deployment.services.PathsService', 'getName(java.lang.String)', Sequence{arg0})
+/]
+
+[query public relativizeTo(arg0 : String, arg1 : String) : String
+	= invoke('sgridsf.dsl.cosiml.gen.deployment.services.PathsService', 'relativizeTo(java.lang.String, java.lang.String)', Sequence{arg0, arg1})
+/]

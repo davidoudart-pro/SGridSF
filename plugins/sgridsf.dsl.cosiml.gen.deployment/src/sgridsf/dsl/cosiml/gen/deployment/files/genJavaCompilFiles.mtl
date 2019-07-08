@@ -1,0 +1,133 @@
+[comment encoding = UTF-8 /]
+[module genJavaCompilFiles('http://www.example.org/cosiml')/]
+
+[import sgridsf::dsl::cosiml::gen::deployment::services::pathsservice /]
+[import sgridsf::dsl::cosiml::gen::deployment::common::util /]
+
+[query private isJavaFmi(unit : SimulationUnit) : Boolean = true /]
+[query private isJavaFmi(unit : CSVScenario) : Boolean = true /]
+[query private isJavaFmi(unit : GeneratedSimulationUnit) : Boolean = unit.tool = unit.getProperty('javafmi-gen.generator-name') /]
+
+[query private fmuFrameworkPath(unit : SimulationUnit) : String = 
+	getProperty('javafmi-gen.fmu-framework').relativizeModelPath(unit.getShPath().getParentPath())
+/]
+[query private fmuBuilderPath(unit : SimulationUnit) : String = 
+	getProperty('javafmi-gen.fmu-builder').relativizeModelPath(unit.getShPath().getParentPath())
+/]
+[query private getModelPath(unit : SimulationUnit, path : String) : String = 
+	path.relativizeModelPath(unit.getShPath().getParentPath())
+ /]
+[template private classPath(unit : SimulationUnit)][/template]
+[template private classPath(unit : CSVScenario) post(trim())]
+"[unit.fmuFrameworkPath().getFileName()/]"
+[/template]
+[template private classPath(unit : GeneratedSimulationUnit) ? (unit.tool = unit.getProperty('javafmi-gen.generator-name'))]
+"[unit.fmuFrameworkPath().getFileName()/]" "[unit.getModelPath(unit.modelPath).getFileName()/]"
+[/template] 
+
+[template private shContent(unit : SimulationUnit)][/template]
+[template private shContent(unit : CSVScenario)]
+#!/bin/sh
+_JAVA_HOME="[unit.getProperty('JAVA_HOME')/]"
+_BINOUTPUT="bin/[unit.getVName()/]"
+_JAVAFMI_FRAMEWORK="[unit.fmuFrameworkPath()/]"
+_JAVAFMI_BUILDER="[unit.fmuBuilderPath()/]"
+_DATAPATH="[unit.dataPath/]"
+
+export JAVA_HOME="$_JAVA_HOME"
+echo "JAVA_HOME set to $_JAVA_HOME"
+
+script_path=$(readlink -f "$0")
+script_dir=$(dirname "$script_path")
+current_dir=$(pwd)
+
+cd $script_dir
+
+echo "Building..."
+mkdir -p "$_BINOUTPUT"
+find src/ -name "*.java" > sources.txt
+javac -classpath "$_JAVAFMI_FRAMEWORK" -d "$_BINOUTPUT" @sources.txt
+rm sources.txt
+
+echo "JAR generation..."
+jar cvfm [unit.getVName()/].jar MANIFEST.MF -C "$_BINOUTPUT" . 
+
+echo "FMU generation..."
+java -jar "$_JAVAFMI_BUILDER" [unit.getVName()/].jar -p Lin64 Win64 -i "$_JAVAFMI_FRAMEWORK" "$_DATAPATH"
+
+echo "End execution"
+echo $(ls -l [unit.getVName()/].fmu)
+
+echo "Fix bug with JavaFMI and Daccosim"
+unzip [unit.getVName()/].fmu modelDescription.xml
+sed -i 's/generationTool="[ '[' /]^"[ ']' /]*"/generationTool="SGridSF"/' modelDescription.xml
+zip -j --update [unit.getVName()/].fmu modelDescription.xml
+
+echo "Removing temporary files..."
+rm -r "$_BINOUTPUT" [unit.getVName()/].jar
+rm modelDescription.xml 
+
+cd $current_dir
+
+[/template]
+
+[template private shContent(unit : GeneratedSimulationUnit) ? (unit.tool = unit.getProperty('javafmi-gen.generator-name'))]
+#!/bin/sh
+_JAVA_HOME="[unit.getProperty('JAVA_HOME')/]"
+_BINOUTPUT="bin/[unit.getVName()/]"
+
+_JAVAFMI_FRAMEWORK="[unit.fmuFrameworkPath()/]"
+_JAVAFMI_BUILDER="[unit.fmuBuilderPath()/]"
+
+export JAVA_HOME="$_JAVA_HOME"
+echo "JAVA_HOME set to $_JAVA_HOME"
+
+script_path=$(readlink -f "$0")
+script_dir=$(dirname "$script_path")
+current_dir=$(pwd)
+
+cd $script_dir
+
+echo "Building..."
+mkdir -p "$_BINOUTPUT"
+find src/ -name "*.java" > sources.txt
+javac -classpath "$_JAVAFMI_FRAMEWORK":"[unit.getModelPath(unit.modelPath)/]" -d "$_BINOUTPUT" @sources.txt
+rm sources.txt
+
+echo "JAR generation..."
+jar cvfm [unit.getVName()/].jar MANIFEST.MF -C "$_BINOUTPUT" . 
+
+echo "FMU generation..."
+java -jar "$_JAVAFMI_BUILDER" [unit.getVName()/].jar -p Lin64 Win64 -i "$_JAVAFMI_FRAMEWORK" "[unit.getModelPath(unit.modelPath)/]" [for (classFile : String | unit.dependencies)]"[unit.getModelPath(classFile)/]" [/for]
+
+echo "End execution"
+echo $(ls -l [unit.getVName()/].fmu)
+
+echo "Fix bug with JavaFMI and Daccosim"
+unzip [unit.getVName()/].fmu modelDescription.xml
+sed -i 's/generationTool="[ '[' /]^"[ ']' /]*"/generationTool="SGridSF"/' modelDescription.xml
+zip -j --update [unit.getVName()/].fmu modelDescription.xml
+
+echo "Removing temporary files..."
+rm -r "$_BINOUTPUT" [unit.getVName()/].jar
+rm modelDescription.xml 
+
+cd $current_dir
+
+[/template]
+
+
+[template public genCompilFiles(unit : SimulationUnit) ? (unit.isJavaFmi())]
+
+[file (unit.getUnitPath()+'/MANIFEST.MF', false, 'UTF-8')]
+Manifest-Version: 1.0
+Class-Path: [unit.classPath()/]
+Created-By: SGridSF framework
+[/file]
+
+[file (unit.getShPath(), false, 'UTF-8')]
+[unit.shContent()/]
+[/file]
+
+
+[/template]

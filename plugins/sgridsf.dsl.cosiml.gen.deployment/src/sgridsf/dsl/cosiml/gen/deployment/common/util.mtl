@@ -1,0 +1,78 @@
+[comment encoding = UTF-8 /]
+[module util('http://www.example.org/cosiml')]
+[import sgridsf::dsl::cosiml::gen::deployment::services::pathsservice /]
+
+
+[query public normalize(name : String) : String = name.substituteAll('.', '_') /]
+
+[query public toAttributeName(name : String) : String = 
+	name.normalize().toLowerFirst()
+/]
+[query public toClassName(name : String) : String = 
+	name.normalize().toUpperFirst()
+/]
+[comment Strategies d'attribution de noms /]
+[query public getVName(port : Port) : String = port.name.toAttributeName() /]
+[query public getVName(unit : SimulationUnit) : String = unit.name.toClassName() /]
+[query public getVName(cosim : CosimulationModel) : String = cosim.name.normalize() /]
+
+[query public getSyncVName(port : Port) : String = port.getVName().concat('_sync') /]
+[query public getQualifiedVName(port : Port) : String = port.getPortContainer().getVName() + '.' + port.getVName() /]
+[query public getSyncQualifiedVName(port : Port) : String = port.getQualifiedVName() + '_sync' /]
+
+[query public getSyncName(port : Port) : String = port.name.concat('.sync') /]
+[query public getQualifiedName(port : Port) : String = port.getPortContainer().getVName() + '.' + port.name /]
+[query public getSyncQualifiedName(port : Port) : String = port.getQualifiedName() + '.sync' /]
+
+[query public getPortContainer(port : Port) : SimulationUnit = port.eContainer(SimulationUnit)/]
+
+[query public getCosim(unit : SimulationUnit) : CosimulationModel = unit.eContainer(CosimulationModel) /]
+
+[query public getOutputPorts(unit : SimulationUnit) : Set(Output) = 
+unit.ports->filter(Output) 
+/]
+[query public getInputPorts(unit : SimulationUnit) : Set(Input) = 
+unit.ports->filter(Input) 
+/]
+[query public getParameterPorts(unit : SimulationUnit) : Set(Parameter) = 
+unit.ports->filter(Parameter) 
+/]
+
+
+
+[query public getCosimPath(cosim : CosimulationModel) : String = 
+'src-gen/' + cosim.getVName()
+/]
+[query public getCosimPath(unit : SimulationUnit) : String = 
+unit.getCosim().getCosimPath()
+/]
+[query public getDngPath(cosim : CosimulationModel) : String = 
+cosim.getCosimPath() + '/' + cosim.getVName() + '.dng'
+/]
+[query public getShPath(cosim : CosimulationModel) : String = 
+cosim.getCosimPath() + '/make' + cosim.getVName() + '.sh'
+/]
+[query public getUnitPath(unit : SimulationUnit) : String = 
+unit.getCosimPath() + '/' + unit.getVName()
+/]
+[query public getShPath(unit : SimulationUnit) : String = 
+unit.getUnitPath() + '/' + unit.getVName() + '_compil.sh'
+/]
+[query public getFmuPath(unit : SimulationUnit) : String = 
+if unit.oclIsTypeOf(ProvidedSimulationUnit) 
+	then unit.oclAsType(ProvidedSimulationUnit).pathFMU 
+	else unit.getUnitPath().concat('/' + unit.getVName() + '.fmu') 
+endif
+/]
+
+
+[template public relativizeModelPath(path : String, base : String) post(trim())] 
+[if (path.isAbsolute())]
+	[path/]
+[else]
+	[getSourceFile().getParentPath().concat('/').concat(path).relativizeTo(getTargetFolder().concat('/').concat(base))/]
+[/if]
+[/template]
+
+
+

@@ -1,0 +1,158 @@
+[comment encoding = UTF-8 /]
+[module javafmi('http://www.example.org/cosiml')]
+
+[import sgridsf::dsl::cosiml::gen::deployment::common::util /]
+
+
+
+[comment][query public getJavaType(port : Port) : String = 
+Set{
+	Tuple{fmi : DataType = DataType::REAL, java : String = 'double'},
+	Tuple{fmi : DataType = DataType::STRING, java : String = 'String'},
+	Tuple{fmi : DataType = DataType::BOOLEAN, java : String = 'Boolean'},
+	Tuple{fmi : DataType = DataType::INTEGER, java : String = 'int'}
+}->any(t: Tuple(fmi:DataType,java:String)|t.fmi = port.datatype).java /]
+[query public getVariableType(port : Port) : String = 
+Set{
+	Tuple{fmi : DataType = DataType::REAL, java : String = 'Real'},
+	Tuple{fmi : DataType = DataType::STRING, java : String = 'String'},
+	Tuple{fmi : DataType = DataType::BOOLEAN, java : String = 'Boolean'},
+	Tuple{fmi : DataType = DataType::INTEGER, java : String = 'Integer'}
+}->any(fmi = self.datatype).java /][/comment]
+
+[query public getJavaType(port : Port) : String = 
+if (port.datatype = DataType::REAL) then 'double'
+else if (port.datatype = DataType::STRING) then 'String'
+else if (port.datatype = DataType::BOOLEAN) then 'boolean'
+else if (port.datatype = DataType::INTEGER) then 'int'
+else '' endif endif endif endif
+/]
+
+[query public getVariableType(port : Port) : String = 
+if (port.datatype = DataType::REAL) then 'Real'
+else if (port.datatype = DataType::STRING) then 'String'
+else if (port.datatype = DataType::BOOLEAN) then 'Boolean'
+else if (port.datatype = DataType::INTEGER) then 'Integer'
+else '' endif endif endif endif
+/]
+
+
+
+
+[query private isDefaultValueValid(port : Port) : Boolean = 
+	not port.defaultValue.oclIsUndefined() and 
+	(port.datatype = DataType::REAL and not port.defaultValue.toReal().oclIsInvalid() or
+	port.datatype = DataType::INTEGER and not port.defaultValue.toInteger().oclIsInvalid() or
+	port.datatype = DataType::BOOLEAN and not port.defaultValue.toBoolean().oclIsInvalid() or
+	port.datatype = DataType::STRING)
+/]
+[query public getSafeDefaultValue(port : Port) : String = 
+	if (not port.isDefaultValueValid()) then 
+		if port.datatype = DataType::REAL then '0.0' else
+		  if port.datatype = DataType::INTEGER then '0' else
+		    if port.datatype = DataType::BOOLEAN then 'false' 
+				else '""'
+		    endif
+		  endif
+		endif
+	else
+		if port.datatype = DataType::STRING 
+			then '"'+port.defaultValue+'"' 
+			else port.defaultValue 
+		endif
+	endif
+/]
+
+
+
+[query public getInEventFunc(port : Port) : String = 
+getProperty('javafmi-gen.Imodel.set-event-input', Sequence{port.getVName()})
+/]
+[query public getInContFunc(port : Port) : String = 
+getProperty('javafmi-gen.Imodel.set-cont-input', Sequence{port.getVName()})
+/]
+[query public getOutContFunc(port : Port) : String = 
+getProperty('javafmi-gen.Imodel.get-cont-output', Sequence{port.getVName()})
+/]
+[query public getOutCheckEventFunc(port : Port) : String = 
+getProperty('javafmi-gen.Imodel.exec-event-output', Sequence{port.getVName()})
+/]
+[query public getOutGetEventFunc(port : Port) : String = 
+getProperty('javafmi-gen.Imodel.get-event-output', Sequence{port.getVName()})
+/]
+
+
+[template private genAddVariable(
+	name:String, 
+	asVarType:String,
+	causality:String,
+	variability:String,
+	defaultValue:String = ''
+) post (trim())]
+	model.add(variable("[name/]")
+		.as[asVarType/]()
+		.causality(Causality.[causality/])
+		.variability(Variability.[variability/])
+		.start([defaultValue/]));
+[/template]
+[template private genAddVariable(port : Port) post (trim())]
+[genAddVariable(
+	port.name, 
+	port.getVariableType(), 
+	if (port.oclIsTypeOf(Input)) then 'input' else 'output' endif, 
+	if (port.nature = Variability::CONTINUOUS) then 'continuous' else 'discrete' endif, 
+	port.getSafeDefaultValue()
+)/]
+[/template]
+
+[template private genRegisterVariable(name:String, varName:String, variableType:String, isInput:Boolean) post (trim())]
+register[variableType/]("[name/]", () -> [varName/][if (isInput)], value -> [varName/] = value[/if]);
+[/template]
+[template private genRegisterVariable(port : Port) post (trim())]
+[genRegisterVariable(
+	port.name,
+	port.getVName(),
+	port.getVariableType(),
+	port.oclIsTypeOf(Input)
+)/]
+[/template]
+
+
+
+
+[template public declarePorts(unit : SimulationUnit)]
+	[for (port : Port | unit.ports)]
+	public [port.getJavaType()/] [port.getVName()/] = [port.getSafeDefaultValue()/];
+		[if (port.nature = Variability::DISCRETE)]
+	public int [port.getVName()/]_sync = 0;
+			[if (port.oclIsTypeOf(Input))]
+	public int [port.getVName()/]_sync_pre = 0; //Not exported in FMU
+			[/if]
+		[/if]
+	
+	[/for]
+[/template]
+
+
+[template public registerPorts(unit : SimulationUnit) post(trim())]
+[for (port : Port | unit.ports)]
+	[port.genRegisterVariable()/]
+		[if (port.nature = Variability::DISCRETE)]
+	[genRegisterVariable(port.name+'.sync', port.getVName()+'_sync', 'Integer', port.oclIsTypeOf(Input))/]
+		[/if]
+	[/for]
+[/template]
+
+[template public defineModel(unit : SimulationUnit) post(trim())]
+Model model = model("[unit.getVName()/]");
+[for (port : Port | unit.ports)]
+
+	[genAddVariable(port)/]
+	[if (port.nature = Variability::DISCRETE)]
+	[let causality:String = if port.oclIsTypeOf(Input) then 'input' else 'output' endif]
+	[genAddVariable(port.name+'.sync', 'Integer', causality, 'discrete', '0')/]
+	[/let]
+	[/if]
+
+[/for]
+[/template]

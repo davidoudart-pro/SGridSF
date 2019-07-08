@@ -1,0 +1,194 @@
+[comment encoding = UTF-8 /]
+[**
+ * The documentation of the module.
+ */]
+[module genCsvScenarioFile('http://www.example.org/cosiml')/]
+
+[import sgridsf::dsl::cosiml::gen::deployment::common::javafmi /]
+[import sgridsf::dsl::cosiml::gen::deployment::common::util /]
+[import sgridsf::dsl::cosiml::gen::deployment::services::pathsservice /]
+
+[**
+ * The documentation of the template.
+ * @param aCSVScenario
+ */]
+[template public genCsvScenarioFile(unit : CSVScenario)
+{
+	path : String = unit.getUnitPath()+'/src/siani/javafmi/'; 
+}]
+	[file (path.concat(unit.getVName()).concat('.java'), false, 'UTF-8')]
+package siani.javafmi;
+
+import org.javafmi.framework.FmiSimulation;
+
+import java.io.BufferedReader;
+import java.io.FileReader;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+
+
+public class [unit.getVName()/] extends FmiSimulation {
+
+	//FMI variables
+	[unit.declarePorts()/]
+	
+	final String dataPath = "[unit.dataPath.getFileName()/]";
+	final String delimiter = "[unit.separateur/]";
+	final String decimal = "[unit.decimal/]";
+	
+	List<List<String>> data = new ArrayList<>();
+	List<String> csvVariables = new ArrayList<String>();
+	
+	int currentLine = 0;
+	double currentTimestamp = 0.0;
+	
+	//Elapsed time since the begining of the simulation. 
+	//Must be reverted in case of rollback 
+	//double _timeElapsed = 0;
+
+
+    
+	@Override
+	public Model define() {
+		[unit.defineModel()/]
+
+		model.description("[unit.implementedFunctions.toString()/]");
+		model.canGetAndSetFMUstate(false);
+		model.canSerializeFMUstate(false);
+		model.providesDirectionalDerivative(false);
+		model.canBeInstantiatedOnlyOncePerProcess(true);
+		model.canHandleVariableCommunicationStepSize(true); 
+		return model;
+	}
+
+	
+	@Override
+	public Status init() {
+		[unit.registerPorts()/]
+
+		try (BufferedReader br = new BufferedReader(new FileReader(dataPath))) {
+			String line;
+			while ((line = br.readLine()) != null) {
+				String[ '[' /] [ ']' /] values = line.split(delimiter);
+				data.add(Arrays.asList(values));
+			}
+			for (int i = 0; i < data.get(0).size(); i++) {
+				csvVariables.add(parse_String(data.get(0).get(i), ""));
+			}
+			doStep(0);
+		} catch (Exception e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+			return Status.FATAL;
+		}
+		
+		return Status.OK;
+	}
+
+	@Override
+	public Status doStep(double dt) {
+		Status code = Status.OK;
+		
+		double limitTimestamp = currentTimestamp + dt;
+		int nextLine = currentLine;
+		double nextTimestamp = currentTimestamp;
+		
+		boolean limitReached = false;
+		while (limitReached == false && nextLine+1 < data.size()) {
+			//Check next time
+			try {
+				nextTimestamp = Double.parseDouble(data.get(nextLine + 1).get(0).replace(decimal, "."));
+			} catch (Exception e) {
+				this.logger().error(e.getMessage());
+				code = Status.WARNING; 
+			}
+			if (nextTimestamp > limitTimestamp) {
+				limitReached = true;
+				nextTimestamp = limitTimestamp;
+			}
+			else {
+				nextLine += 1;
+			}
+		}
+
+		int nbline = nextLine - currentLine;
+		currentLine = nextLine;
+		currentTimestamp=nextTimestamp;
+		[for (port : Port | unit.ports)]
+		if (csvVariables.contains("[port.getVName()/]")) {
+			[port.getVName()/] = parse_[port.getJavaType()/](data.get(currentLine).get(csvVariables.indexOf("[port.getVName()/]")), [port.getVName()/]);
+			[if (port.nature = Variability::DISCRETE)]
+			[port.getSyncVName()/] += nbline;
+			[/if]
+		}
+		[/for]
+		
+		return code;	
+
+	}
+
+	@Override
+	public Status reset() {
+		// TODO Auto-generated method stub
+		return Status.OK;
+	}
+
+	@Override
+	public Status terminate() {
+		// TODO Auto-generated method stub
+		return Status.OK;
+	}
+
+
+	private double parse_double(String value, double defaultValue) {
+		double res = defaultValue;
+		try {
+			res = Double.parseDouble(value.replace(decimal, ".").trim());
+		} catch (NumberFormatException e) {
+			System.out.println(
+					e.toString()+
+					" : "+
+					value+
+					" can't be parsed as double, defaultValue="+defaultValue+" used");
+		}
+		return res;
+	}
+	private Boolean parse_Boolean(String value, Boolean defaultValue) {
+		Boolean res = defaultValue;
+		try {
+			res = Boolean.parseBoolean(value.trim());
+		} catch (Exception e) {
+			System.out.println(
+					value+
+					" can't be parsed as double, defaultValue="+defaultValue+" used");
+		}
+		return res;
+	}
+	private int parse_int(String value, int defaultValue) {
+		int res = defaultValue;
+		try {
+			res = Integer.parseInt(value.replace(decimal, ".").trim());
+		} catch (NumberFormatException e) {
+			System.out.println(
+					e.toString()+
+					" : "+
+					value+
+					" can't be parsed as double, defaultValue="+defaultValue+" used");
+		}
+		return res;
+	}
+	private String parse_String(String value, String defaultValue) {
+		value = value.trim();
+		if ((value.startsWith("\"") || value.startsWith("'")) && 
+			(value.endsWith("\"") || value.endsWith("'"))
+		) {
+			value = value.substring(1, value.length()-1);
+		}
+		return value;
+	}
+
+}
+
+	[/file]
+[/template]

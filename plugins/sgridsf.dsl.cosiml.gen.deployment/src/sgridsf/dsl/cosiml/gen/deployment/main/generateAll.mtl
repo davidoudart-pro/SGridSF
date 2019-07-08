@@ -1,0 +1,50 @@
+[comment encoding = UTF-8 /]
+[**
+ * The documentation of the module generateAll.
+ */]
+[module generateAll('http://www.example.org/cosiml')]
+
+[import sgridsf::dsl::cosiml::gen::deployment::files::genJavaFmiFile /]
+[import sgridsf::dsl::cosiml::gen::deployment::files::genJavaCompilFiles /]
+[import sgridsf::dsl::cosiml::gen::deployment::files::genCsvScenarioFile /]
+[import sgridsf::dsl::cosiml::gen::deployment::files::genDngFile /]
+[import sgridsf::dsl::cosiml::gen::deployment::files::genCosimShFile /]
+
+
+[query private findJavaUnitsToGen(cosim : CosimulationModel) : Set(GeneratedSimulationUnit) = 
+	cosim.units
+		->filter(GeneratedSimulationUnit)
+		->select(tool=getProperty('javafmi-gen.generator-name'))
+/]
+
+
+
+
+[**
+ * The documentation of the template generateCosimulation.
+ * @param cosim
+ */]
+[template public generateAll(cosim : CosimulationModel)]
+[comment @main/]
+
+[comment]Daccosim Script generation[/comment]
+[cosim.genDngFile()/]
+[cosim.genCosimSh()/]
+
+[comment]	JavaFMI source	[/comment]
+	[for (unit : GeneratedSimulationUnit | findJavaUnitsToGen())]
+		[unit.genJavaFmiWrapperFile()/]
+		[unit.genCompilFiles()/]
+	[/for]
+
+[comment]	CSVSenario FMU sources	[/comment]
+	[for (unit : CSVScenario | cosim.units->filter(CSVScenario))]
+		[unit.genCsvScenarioFile()/]
+		[unit.genCompilFiles()/]
+	[/for]
+
+
+[/template]
+
+
+

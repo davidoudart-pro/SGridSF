@@ -1,0 +1,32 @@
+[comment encoding = UTF-8 /]
+[**
+ * The documentation of the module genCosimShFile.
+ */]
+[module genCosimShFile('http://www.example.org/cosiml')]
+[import sgridsf::dsl::cosiml::gen::deployment::common::util /]
+[import sgridsf::dsl::cosiml::gen::deployment::services::pathsservice /]
+
+[**
+ * The documentation of the template genCosimSh.
+ * @param aCosimulationModel
+ */]
+[template public genCosimSh(cosim : CosimulationModel)]
+
+[file (cosim.getShPath(), false, 'UTF-8')]
+#!/bin/sh
+
+[for (unit : SimulationUnit | cosim.units->filter(GeneratedSimulationUnit)->addAll(cosim.units->filter(CSVScenario)))]
+echo "set chmod for [unit.getVName()/] script : [unit.getShPath().relativizeTo(cosim.getShPath().getParentPath())/]"
+chmod +x [unit.getShPath().relativizeTo(cosim.getShPath().getParentPath())/]
+echo "Execute script"
+sh ./[unit.getShPath().relativizeTo(cosim.getShPath().getParentPath())/]
+[/for]
+
+[if (not (cosim.getProperty('daccosim.shell') = ''))]
+java -jar [cosim.getProperty('daccosim.shell')/] input:"[cosim.getDngPath().relativizeTo(cosim.getShPath().getParentPath())/]"
+[/if]
+
+
+
+[/file]
+[/template]
