@@ -85,7 +85,7 @@ You need especially to set the paths to several dependencies required for the si
 These tools are presented more in detail in the previous [Prequisites](#Prequisites) section.
 
 The generation is done using an *Acceleo Application Run Configuration*, as following
-![Acceleo Run configuration](https://raw.davidoudart-pro/SGridSF/img/acceleo-run-configuration.png)
+![Acceleo Run configuration](dd)
 
 The *Target* field is the folder where you want the files to be generated. 
 All the files will be generated inside a src-gen folder.
