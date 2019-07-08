@@ -45,11 +45,11 @@ The modeling and generation tools are EMF plugins, so you need to install an Ecl
 The modeling/generation platform and the execution platform doesn't have to be the same.
 The execution of the cosimulation requires its own dependencies, according to the generators you used in the previous part:
 
-* **DACCOSIM Shell** [[https://bitbucket.org/simulage/daccosim/downloads/]]: DACCOSIM is a FMI cosimulation software. Its shell tool allows to execute cosimulations from a script.
+* **DACCOSIM Shell** ([download](https://bitbucket.org/simulage/daccosim/downloads/)): DACCOSIM is a FMI cosimulation software. Its shell tool allows to execute cosimulations from a script.
 
 If you want to use the **Java unit** or the **CSV unit** generator: 
 
-* **JavaFMI Framework and Builder** [[https://bitbucket.org/siani/javafmi/downloads/]]: JavaFMI builder is a tool to produce an FMU artifact from a java model which written with the JavaFMI Framework Java library.
+* **JavaFMI Framework and Builder** ([download](https://bitbucket.org/siani/javafmi/downloads/)): JavaFMI builder is a tool to produce an FMU artifact from a java model which written with the JavaFMI Framework Java library.
 
 ## Run the Use Case
 
@@ -82,11 +82,10 @@ You need especially to set the paths to several dependencies required for the si
 2. JavaFMI framework library and builder tool (required by the *Java units* and *CSV units* generator).
 3. JAVA_HOME variable if it is not set inside the environment variables (also required by the *Java units* and *CSV units* generator).
 
-These tools are presented more in detail in the previous [[Prequisites]] section.
+These tools are presented more in detail in the previous [Prequisites](#Prequisites) section.
 
 The generation is done using an *Acceleo Application Run Configuration*, as following
-
-[[img/acceleo-run-configuration.png]]
+![Acceleo Run configuration](https://raw.davidoudart-pro/SGridSF/img/acceleo-run-configuration.png)
 
 The *Target* field is the folder where you want the files to be generated. 
 All the files will be generated inside a src-gen folder.
@@ -107,7 +106,7 @@ The cosimulation launching script is found at `src-gen/SeinIsland/makeSeinIsland
 **On Windows platform** :
 
 For now, we only generates .SH files to execute the cosimulation.
-On windows, you can execute .SH files inside the **mingw** command line software ([[http://www.mingw.org/]]).
+On windows, you can execute .SH files inside the **mingw** command line software (<http://www.mingw.org/>).
 
 
 Executing the launching script will creates an FMU for all the *GeneratedSimulationUnit* of the cosimulation model, and executes the cosimulation scenario inside the Daccosim software.
