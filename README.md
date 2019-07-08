@@ -87,7 +87,7 @@ These tools are presented more in detail in the previous [Prequisites](#Prequisi
 The generation is done using an *Acceleo Application Run Configuration*, as following
 ![Acceleo Run configuration](https://raw.davidoudart-pro/SGridSF/img/acceleo-run-configuration.png)
 
-![Run configuration acceleo](https://raw.davidoudart-pro/SGridSF/img/acceleo-run-configuration.png)
+![Run configuration acceleo](https://github.com/davidoudart-pro/SGridSF/blob/master/img/acceleo-run-configuration.png)
 
 The *Target* field is the folder where you want the files to be generated. 
 All the files will be generated inside a src-gen folder.
